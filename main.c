@@ -8,51 +8,62 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <time.h>
 #include "ff.h"
 #include "diskio.h"
 #include "hd44780.h"
 #include "uart_functions.h"
 #define pi 3.14
 #define diameter 1.167
-
 #define CMD_GO_IDLE_STATE 0x00
-
 #define R1_IDLE_STATE 0
-
 #define TIMER_OFF 0b00000000
 #define TIMER_ON  0b00000101
-
 #define TIMER_TO_TACH (60UL * 10000000UL / 512UL)
 
 
+///////////////////////////
+//LCD screen variables//
 char lcd_string_display[32];  //char array for both lines of 16x2 LCD
 volatile char lcd_str1[16] = "S:      W:  .   "; //top line of LCD with set values
 volatile char lcd_str2[16] = "LAP:            "; //bottom line of LCD with set values
 char get_speed[3]; //char array for speed values
 char get_pwr[4];   //char array for power consumption values
+///////////////////////////
 
+///////////////////////////
+//Timestamp variables//
 uint16_t hours=0;
 uint16_t mins=0;
 uint16_t secs=0;
 uint16_t msecs=0;
+///////////////////////////
 
+///////////////////////////
+//Tachometer variables//
 volatile uint16_t count=0;    //Main revolution counter
 volatile uint16_t rpm=0;   //Revolution per minute
 volatile uint16_t rps=0;   //Revolution per second
 char speed_data[10];
+///////////////////////////
 
+
+///////////////////////////
+//Speed and Power value variables//
 char speed_char[20];
 char pow_char[20];
-
+///////////////////////////
 //volatile uint16_t second_count = 0;
 
+///////////////////////////
+//SD Card variables//
 FATFS fs;
 FIL fil;
 UINT bW;
 char header_buffer[50];
 char data_buffer[60];
+//////////////////////////
 
+///////////////////////////
 //GPS variables
 char frame[200];
 char GNSSrunstatus[2];
@@ -73,7 +84,7 @@ char GLONASSsatellitesused[3];
 char cn0max[3];
 char HPA[7];
 char VPA[7];
-
+///////////////////////////
 
 
 void send_byte(uint8_t b)
@@ -131,8 +142,7 @@ uint8_t send_command(uint8_t command, uint32_t arg)
 	return response;
 }
 
-
-
+/////////////////////////////////////////////////////////////////////////////////
 // Initialize the SPI port
 //void SPI_Init(){
 uint8_t SPI_Init(){
@@ -167,8 +177,11 @@ uint8_t SPI_Init(){
 
 	return 1;
 }
+/////////////////////////////////////////////////////////////////////////////////
 
 
+/////////////////////////////////////////////////////////////////////////////////
+//ADC initialization
 void adc_init(void)
 {
 	ADCSRA |= (1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);
@@ -190,8 +203,7 @@ uint16_t read_adc(int ch_sel){
 	while(ADCSRA & (1<<ADSC));
 	return ADC;
 }
-
-/****************************************/
+/////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -207,8 +219,6 @@ return 1;
 
 return 0;
 }
-
-
 
 uint16_t speed;
 uint16_t r2;
@@ -498,13 +508,14 @@ int main(void){
   	unsigned long tachometer;
 	char count_data[5];
 	
-	SPI_Init();					// Initialize the SPI port
+	SPI_Init();				// Initialize the SPI port
 	
 	f_mount(0, &fs);			// Mount the SD card
 	disk_initialize(0);			// Initializing the SD card
 	
 	//_delay_ms(10)
-	tcnt1_init();
+	//Initializations for Timer0, Timer1, Timer2
+	tcnt1_init();			
 	tcnt0_init();
 	tcnt2_init();
 	
@@ -515,13 +526,13 @@ int main(void){
 	
 	DDRD |= 0b00000000;	// for buttons
 	PORTD |= 0b00000001;
-	DDRE |= 0b00110000;
-	PORTE |= 0b00110010; 
+	DDRE |= 0b00110000;	//set INT4, INT5 as input for throttle and cruise control
+	PORTE |= 0b00110010; 	//set pull up resistors for throttle and cruise
 	
-	EICRA |= _BV(ISC01); 
-	EIMSK |= _BV(INT0);
+	EICRA |= _BV(ISC01);    //set interrupt zero for sense on falling edge
+	EIMSK |= _BV(INT0);     //interrupt mask for INT0
 	
-	sei();
+	sei();			//set global interrupts
 	
 	
 	lcd_init();    //initialize the LCD
@@ -579,13 +590,8 @@ int main(void){
 			flag = 1;
 			count=0;
 		}
+
 		
-	
-		speed = rand() % 1000;
-		r2 = rand() % 10000;	
-		char *str1;
-		
-	
 		strtok_single(gps_buff, " ");
   		strcpy(GNSSrunstatus, strtok_single(NULL, ","));// Gets GNSSrunstatus
   		strcpy(Fixstatus, strtok_single(NULL, ",")); // Gets Fix status
@@ -636,9 +642,6 @@ int main(void){
 		//lap number increments when button pressed
 		char buf[3] = "   "; //initialize array with spaces
 		itoa(count,buf, 10); //integer to ascii conversion to char array
-		
-		//uart_puts("AT");
-			
 		
 		/*for(k = 0; k<2; k++){
 			gps_buff[k] = uart_getc();
