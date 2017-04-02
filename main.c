@@ -45,7 +45,7 @@ uint16_t msecs=0;
 /////////////////////////////////////////////////////////////////////////////////
 //Tachometer variables//
 /////////////////////////////////////////////////////////////////////////////////
-volatile uint16_t count=0;    //Main revolution counter
+volatile uint16_t rotation=0;    //Main revolution counter
 volatile uint16_t rpm=0;   //Revolution per minute
 volatile uint16_t rps=0;   //Revolution per second
 char speed_data[10];
@@ -284,9 +284,9 @@ void tcnt2_init(void){        //initialize timer
 /////////////////////////////////////////////////////////////////////////////////
 ISR(TIMER1_COMPA_vect){
 
-	rps = count;
+	rps = rotation;
 	rpm = rps*60;
-	count = 0;
+	rotation = 0;
 
 }
 
@@ -321,7 +321,7 @@ ISR(TIMER2_OVF_vect){
 		
 	if (tme > 225) {           //take the data when tme is greater than least 1 sec. 
 	
-	act_speed = (diameter * pi * rpm *60)/5280;
+	act_speed = (diameter * pi * rpm*60)/5280;
 	before_dec = act_speed;
 	
 	after_dec = act_speed - before_dec;
@@ -431,7 +431,7 @@ unsigned int tachTimer;
 int rot_time;
 ISR(INT0_vect){
 	
-	count++;
+	rotation++;
 
 }
 /////////////////////////////////////////////////////////////////////////////////
@@ -670,7 +670,7 @@ int main(void){
   		strcpy(HPA, strtok_single(NULL, ",")); // Gets HPA
   		strcpy(VPA, strtok_single(NULL, "\r")); // Gets VPA
 		
-		int pwr_rand = 744;
+		//int pwr_rand = 744;
 
 /////////////////////////////////////////////////////////////////////////////////
 //Send data to Log File on SD Card
